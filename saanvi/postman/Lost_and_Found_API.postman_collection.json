@@ -1,0 +1,195 @@
+{
+  "info": {
+    "name": "Lost and Found API",
+    "description": "Postman API test collection for Lost and Found Application matching Module 3 and Module 4 Skill Lab patterns.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:3000",
+      "type": "string"
+    },
+    {
+      "key": "itemId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Report Lost Item (POST /items)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 201 Created', function () {",
+              "    pm.response.to.have.status(201);",
+              "});",
+              "var json = pm.response.json();",
+              "if (json._id) {",
+              "    pm.collectionVariables.set('itemId', json._id);",
+              "    console.log('Saved itemId:', json._id);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Casio Scientific Calculator\",\n  \"category\": \"Stationery\",\n  \"status\": \"Lost\",\n  \"location\": \"Library 2nd Floor\",\n  \"date\": \"2026-10-27\",\n  \"contact\": \"9876543210\",\n  \"description\": \"Model fx-991EX with silver name sticker on back\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/items",
+          "host": ["{{baseUrl}}"],
+          "path": ["items"]
+        }
+      }
+    },
+    {
+      "name": "2. Report Found Item (POST /items)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Navy Blue Umbrella\",\n  \"category\": \"Accessories\",\n  \"status\": \"Found\",\n  \"location\": \"College Canteen Table 4\",\n  \"date\": \"2026-10-27\",\n  \"contact\": \"security@college.edu\",\n  \"description\": \"Has wooden handle, kept at reception\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/items",
+          "host": ["{{baseUrl}}"],
+          "path": ["items"]
+        }
+      }
+    },
+    {
+      "name": "3. Get All Items (GET /items)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/items",
+          "host": ["{{baseUrl}}"],
+          "path": ["items"]
+        }
+      }
+    },
+    {
+      "name": "4. Search Items (GET /items?search=calculator)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/items?search=calculator",
+          "host": ["{{baseUrl}}"],
+          "path": ["items"],
+          "query": [
+            {
+              "key": "search",
+              "value": "calculator"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "5. Filter by Status (GET /items?status=Lost)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/items?status=Lost",
+          "host": ["{{baseUrl}}"],
+          "path": ["items"],
+          "query": [
+            {
+              "key": "status",
+              "value": "Lost"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "6. Get Single Item by ID (GET /items/:id)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/items/{{itemId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["items", "{{itemId}}"]
+        }
+      }
+    },
+    {
+      "name": "7. Update Item (PUT /items/:id)",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"Found\",\n  \"description\": \"Item was located and handed over to security desk\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/items/{{itemId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["items", "{{itemId}}"]
+        }
+      }
+    },
+    {
+      "name": "8. Delete Item (DELETE /items/:id)",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/items/{{itemId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["items", "{{itemId}}"]
+        }
+      }
+    },
+    {
+      "name": "9. Validation Test - Missing Title (POST /items -> 400)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"Lost\",\n  \"location\": \"Library\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/items",
+          "host": ["{{baseUrl}}"],
+          "path": ["items"]
+        }
+      }
+    }
+  ]
+}

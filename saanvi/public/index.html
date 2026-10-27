@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Campus Lost & Found System</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Campus Lost & Found System</h1>
+      <p>Full-Stack MERN Architecture (Vanilla JS + Express + MongoDB)</p>
+    </header>
+
+    <!-- Inline Status / Alert Notification -->
+    <div id="notification" role="alert" aria-live="polite"></div>
+
+    <!-- Section 1: Add / Edit Item Form -->
+    <section class="card" aria-labelledby="form-heading">
+      <h2 id="form-heading">Report Lost or Found Item</h2>
+      <form id="item-form" novalidate>
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="item-title">Item Name / Title *</label>
+            <input type="text" id="item-title" name="title" placeholder="e.g. Casio Scientific Calculator" required>
+          </div>
+
+          <div class="form-group">
+            <label for="item-category">Category *</label>
+            <select id="item-category" name="category" required>
+              <option value="Electronics">Electronics (Laptop, Phone, Charger)</option>
+              <option value="Stationery">Stationery (Calculator, Notebook, Pen)</option>
+              <option value="ID Card / Documents">ID Card / College Pass / Documents</option>
+              <option value="Wallet / Bag">Wallet / Backpack / Purse</option>
+              <option value="Keys">Keys (Room, Bike, Car)</option>
+              <option value="Clothing">Clothing / Bottle / Accessories</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="item-status">Status *</label>
+            <select id="item-status" name="status" required>
+              <option value="Lost">Lost (I lost this item)</option>
+              <option value="Found">Found (I found this item)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="item-location">Location *</label>
+            <input type="text" id="item-location" name="location" placeholder="e.g. Central Library 2nd Floor" required>
+          </div>
+
+          <div class="form-group">
+            <label for="item-date">Date *</label>
+            <input type="date" id="item-date" name="date" required>
+          </div>
+
+          <div class="form-group">
+            <label for="item-contact">Contact Info (Phone / Email) *</label>
+            <input type="text" id="item-contact" name="contact" placeholder="e.g. 9876543210 or name@college.edu" required>
+          </div>
+
+          <div class="form-group full-width">
+            <label for="item-description">Description / Distinct Marks (Optional)</label>
+            <input type="text" id="item-description" name="description" placeholder="e.g. Blue sticker on top, black pouch">
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" id="submit-btn" class="btn btn-primary">Report Item</button>
+          <button type="button" id="cancel-edit-btn" class="btn btn-secondary" style="display: none;">Cancel Edit</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- Section 2: Search & Filter -->
+    <section class="card" aria-labelledby="search-heading">
+      <div class="search-bar-container">
+        <div class="form-group" style="flex: 2;">
+          <label for="search-input">Search Items (Live Debounced)</label>
+          <input 
+            type="search" 
+            id="search-input" 
+            placeholder="Search by item name, location, or keyword..."
+            autocomplete="off"
+          >
+        </div>
+
+        <div class="form-group" style="flex: 1;">
+          <label for="filter-status">Filter Status</label>
+          <select id="filter-status">
+            <option value="">All Statuses</option>
+            <option value="Lost">Lost Only</option>
+            <option value="Found">Found Only</option>
+          </select>
+        </div>
+
+        <button type="button" id="clear-search-btn" class="btn btn-secondary" style="align-self: flex-end; height: 42px;">
+          Clear
+        </button>
+      </div>
+    </section>
+
+    <!-- Section 3: Reported Items Directory -->
+    <section class="card" aria-labelledby="list-heading">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h2 id="list-heading" style="margin-bottom: 0; border: none; padding: 0;">
+          All Reported Items <span id="item-count" class="badge">0</span>
+        </h2>
+      </div>
+
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Item Name</th>
+              <th>Category</th>
+              <th>Location</th>
+              <th>Date</th>
+              <th>Contact</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="items-table-body">
+            <tr>
+              <td colspan="7" class="empty-state">Loading items from database...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
