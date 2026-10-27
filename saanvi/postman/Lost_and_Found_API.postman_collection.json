@@ -149,7 +149,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"status\": \"Found\",\n  \"description\": \"Item was located and handed over to security desk\"\n}"
+          "raw": "{\n  \"status\": \"Resolved\",\n  \"description\": \"Owner identified and item safely returned\"\n}"
         },
         "url": {
           "raw": "{{baseUrl}}/items/{{itemId}}",

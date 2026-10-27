@@ -54,8 +54,8 @@ function validateItem(body, isUpdate = false) {
     if (!category || typeof category !== 'string' || category.trim() === '') {
       return 'Category is required';
     }
-    if (!status || !['Lost', 'Found'].includes(status)) {
-      return "Status must be either 'Lost' or 'Found'";
+    if (!status || !['Lost', 'Found', 'Resolved'].includes(status)) {
+      return "Status must be 'Lost', 'Found', or 'Resolved'";
     }
     if (!location || typeof location !== 'string' || location.trim() === '') {
       return 'Location where item was lost/found is required';
@@ -64,8 +64,8 @@ function validateItem(body, isUpdate = false) {
       return 'Contact information (phone or email) is required';
     }
   } else {
-    if (status !== undefined && !['Lost', 'Found'].includes(status)) {
-      return "Status must be either 'Lost' or 'Found'";
+    if (status !== undefined && !['Lost', 'Found', 'Resolved'].includes(status)) {
+      return "Status must be 'Lost', 'Found', or 'Resolved'";
     }
   }
 
@@ -112,7 +112,7 @@ app.get('/items', async (req, res) => {
     const { search, status } = req.query;
     const filter = {};
 
-    if (status && ['Lost', 'Found'].includes(status)) {
+    if (status && ['Lost', 'Found', 'Resolved'].includes(status)) {
       filter.status = status;
     }
 
