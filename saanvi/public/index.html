@@ -3,135 +3,189 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Campus Lost & Found System</title>
+  <title>Campus Lost & Found</title>
+  <!-- rounded friendly font (falls back to the system font when offline) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="container">
-    <header>
-      <h1>Campus Lost & Found System</h1>
-      <p>Full-Stack MERN Architecture (Vanilla JS + Express + MongoDB)</p>
-    </header>
+  <!-- ============ HERO / HEADER ============ -->
+  <header class="hero">
+    <div class="hero-text">
+      <span class="hero-tag">🌿 Team MONGOse</span>
+      <h1>Campus Lost &amp; Found</h1>
+      <p>Lost something? Found something? Post it here and we'll help it find its way home.</p>
 
-    <!-- Inline Status / Alert Notification -->
-    <div id="notification" role="alert" aria-live="polite"></div>
+      <!-- numbers (filled by script.js) -->
+      <div class="stats" aria-label="Item statistics">
+        <div class="stat stat-lost"><span class="stat-icon">😟</span><b id="stat-lost">0</b><span>still lost</span></div>
+        <div class="stat stat-found"><span class="stat-icon">🙌</span><b id="stat-found">0</b><span>found</span></div>
+        <div class="stat stat-resolved"><span class="stat-icon">🎉</span><b id="stat-resolved">0</b><span>reunited</span></div>
+      </div>
+    </div>
 
-    <!-- Section 1: Add / Edit Item Form -->
-    <section class="card" aria-labelledby="form-heading">
-      <h2 id="form-heading">Report Lost or Found Item</h2>
+    <!-- hand-drawn illustration: a backpack with a magnifying glass -->
+    <svg class="hero-art" viewBox="0 0 240 200" role="img" aria-label="A backpack and a magnifying glass">
+      <circle cx="120" cy="105" r="88" fill="#dcfce7"/>
+      <circle cx="120" cy="105" r="66" fill="#bbf7d0" opacity="0.6"/>
+      <!-- backpack -->
+      <path d="M88 70 q0 -26 32 -26 q32 0 32 26" fill="none" stroke="#15803d" stroke-width="8" stroke-linecap="round"/>
+      <rect x="72" y="66" width="96" height="104" rx="26" fill="#22c55e"/>
+      <rect x="86" y="108" width="68" height="44" rx="14" fill="#16a34a"/>
+      <rect x="112" y="104" width="16" height="10" rx="4" fill="#facc15"/>
+      <circle cx="98" cy="88" r="4" fill="#f0fdf4"/>
+      <circle cx="142" cy="88" r="4" fill="#f0fdf4"/>
+      <path d="M108 92 q12 9 24 0" fill="none" stroke="#f0fdf4" stroke-width="4" stroke-linecap="round"/>
+      <!-- magnifying glass -->
+      <circle cx="176" cy="142" r="24" fill="#ffffff" fill-opacity="0.7" stroke="#14532d" stroke-width="8"/>
+      <line x1="193" y1="160" x2="214" y2="182" stroke="#14532d" stroke-width="10" stroke-linecap="round"/>
+      <!-- sparkles -->
+      <path d="M44 52 l4 10 l10 4 l-10 4 l-4 10 l-4 -10 l-10 -4 l10 -4z" fill="#facc15"/>
+      <path d="M200 40 l3 7 l7 3 l-7 3 l-3 7 l-3 -7 l-7 -3 l7 -3z" fill="#4ade80"/>
+    </svg>
+  </header>
+
+  <!-- ============ MAIN LAYOUT: form left, items right ============ -->
+  <div class="layout">
+
+    <!-- ---------- LEFT: report form ---------- -->
+    <aside class="card form-card" aria-labelledby="form-heading">
+      <h2 id="form-heading">📮 Report an item</h2>
+
       <form id="item-form" novalidate>
-        <div class="form-grid">
-          <div class="form-group">
-            <label for="item-title">Item Name / Title *</label>
-            <input type="text" id="item-title" name="title" placeholder="e.g. Casio Scientific Calculator" required>
-          </div>
-
-          <div class="form-group">
-            <label for="item-category">Category *</label>
-            <select id="item-category" name="category" required>
-              <option value="Electronics">Electronics (Laptop, Phone, Charger)</option>
-              <option value="Stationery">Stationery (Calculator, Notebook, Pen)</option>
-              <option value="ID Card / Documents">ID Card / College Pass / Documents</option>
-              <option value="Wallet / Bag">Wallet / Backpack / Purse</option>
-              <option value="Keys">Keys (Room, Bike, Car)</option>
-              <option value="Clothing">Clothing / Bottle / Accessories</option>
-              <option value="Other">Other</option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label for="item-status">Status *</label>
-            <select id="item-status" name="status" required>
-              <option value="Lost">Lost (I lost this item)</option>
-              <option value="Found">Found (I found this item)</option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label for="item-location">Location *</label>
-            <input type="text" id="item-location" name="location" placeholder="e.g. Central Library 2nd Floor" required>
-          </div>
-
-          <div class="form-group">
-            <label for="item-date">Date *</label>
-            <input type="date" id="item-date" name="date" required>
-          </div>
-
-          <div class="form-group">
-            <label for="item-contact">Contact Info (Phone / Email) *</label>
-            <input type="text" id="item-contact" name="contact" placeholder="e.g. 9876543210 or name@college.edu" required>
-          </div>
-
-          <div class="form-group full-width">
-            <label for="item-description">Description / Distinct Marks (Optional)</label>
-            <input type="text" id="item-description" name="description" placeholder="e.g. Blue sticker on top, black pouch">
-          </div>
+        <!-- big friendly Lost / Found choice -->
+        <div class="type-toggle" role="radiogroup" aria-label="Status">
+          <label class="toggle-option lost">
+            <input type="radio" name="status" value="lost" checked>
+            <span>😟 I lost something</span>
+          </label>
+          <label class="toggle-option found">
+            <input type="radio" name="status" value="found">
+            <span>🙌 I found something</span>
+          </label>
         </div>
 
-        <div class="form-actions">
-          <button type="submit" id="submit-btn" class="btn btn-primary">Report Item</button>
-          <button type="button" id="cancel-edit-btn" class="btn btn-secondary" style="display: none;">Cancel Edit</button>
-        </div>
-      </form>
-    </section>
-
-    <!-- Section 2: Search & Filter -->
-    <section class="card" aria-labelledby="search-heading">
-      <div class="search-bar-container">
-        <div class="form-group" style="flex: 2;">
-          <label for="search-input">Search Items (Live Debounced)</label>
-          <input 
-            type="search" 
-            id="search-input" 
-            placeholder="Search by item name, location, or keyword..."
-            autocomplete="off"
-          >
+        <div class="form-group">
+          <label for="item-title">What is it? *</label>
+          <input type="text" id="item-title" name="title" placeholder="e.g. Casio scientific calculator" maxlength="80" required>
         </div>
 
-        <div class="form-group" style="flex: 1;">
-          <label for="filter-status">Filter Status</label>
-          <select id="filter-status">
-            <option value="">All Statuses</option>
-            <option value="Lost">Lost Only</option>
-            <option value="Found">Found Only</option>
+        <div class="form-group">
+          <label for="item-category">Category *</label>
+          <select id="item-category" name="category" required>
+            <option value="Electronics">💻 Electronics</option>
+            <option value="Stationery">✏️ Stationery</option>
+            <option value="ID Card / Documents">🪪 ID card / Documents</option>
+            <option value="Wallet / Bag">🎒 Wallet / Bag</option>
+            <option value="Keys">🔑 Keys</option>
+            <option value="Clothing">👕 Clothing / Bottle</option>
+            <option value="Other">📦 Other</option>
           </select>
         </div>
 
-        <button type="button" id="clear-search-btn" class="btn btn-secondary" style="align-self: flex-end; height: 42px;">
-          Clear
-        </button>
-      </div>
-    </section>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="item-location">Where? *</label>
+            <input type="text" id="item-location" name="location" list="location-list" placeholder="e.g. Library" required>
+            <!-- suggestions while typing, so everyone writes places the same way (helps matching) -->
+            <datalist id="location-list">
+              <option value="Library"></option>
+              <option value="Canteen"></option>
+              <option value="Main Block"></option>
+              <option value="Lab Block"></option>
+              <option value="Hostel"></option>
+              <option value="Parking"></option>
+              <option value="Sports Ground"></option>
+              <option value="Auditorium"></option>
+            </datalist>
+          </div>
 
-    <!-- Section 3: Reported Items Directory -->
-    <section class="card" aria-labelledby="list-heading">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-        <h2 id="list-heading" style="margin-bottom: 0; border: none; padding: 0;">
-          All Reported Items <span id="item-count" class="badge">0</span>
-        </h2>
+          <div class="form-group">
+            <label for="item-date">When? *</label>
+            <input type="date" id="item-date" name="date" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="item-contact">Your contact *</label>
+          <input type="text" id="item-contact" name="contact" placeholder="Phone or college email" required>
+        </div>
+
+        <div class="form-group">
+          <label for="item-description">Anything special about it? <span class="optional">(optional)</span></label>
+          <input type="text" id="item-description" name="description" maxlength="300" placeholder="e.g. Blue sticker on top">
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" id="submit-btn" class="btn btn-primary">📮 Report item</button>
+          <button type="button" id="cancel-edit-btn" class="btn btn-soft" hidden>✖ Cancel edit</button>
+        </div>
+      </form>
+    </aside>
+
+    <!-- ---------- RIGHT: search, filters and items ---------- -->
+    <main class="items-area">
+      <section class="card filter-card" aria-label="Search and filter">
+        <div class="search-box">
+          <span class="search-icon" aria-hidden="true">🔍</span>
+          <input type="search" id="search-input" placeholder="Search by name, place, category or description..." autocomplete="off" aria-label="Search items">
+        </div>
+
+        <div class="filters">
+          <select id="filter-status" aria-label="Filter by status">
+            <option value="">🔄 Lost &amp; found</option>
+            <option value="lost">😟 Lost only</option>
+            <option value="found">🙌 Found only</option>
+          </select>
+
+          <select id="filter-location" aria-label="Filter by location">
+            <option value="">📍 Everywhere</option>
+            <option>Library</option><option>Canteen</option><option>Main Block</option><option>Lab Block</option>
+            <option>Hostel</option><option>Parking</option><option>Sports Ground</option><option>Auditorium</option>
+          </select>
+
+          <select id="filter-category" aria-label="Filter by category">
+            <option value="">🗂️ All categories</option>
+            <option value="Electronics">💻 Electronics</option>
+            <option value="Stationery">✏️ Stationery</option>
+            <option value="ID Card / Documents">🪪 ID card / Documents</option>
+            <option value="Wallet / Bag">🎒 Wallet / Bag</option>
+            <option value="Keys">🔑 Keys</option>
+            <option value="Clothing">👕 Clothing / Bottle</option>
+            <option value="Other">📦 Other</option>
+          </select>
+
+          <label class="switch">
+            <input type="checkbox" id="show-resolved">
+            <span class="slider" aria-hidden="true"></span>
+            Show reunited
+          </label>
+
+          <button type="button" id="clear-search-btn" class="btn btn-soft btn-sm">↺ Clear</button>
+        </div>
+      </section>
+
+      <div class="items-heading">
+        <h2>🧺 Reported items</h2>
+        <span id="item-count" class="count-pill">0</span>
       </div>
 
-      <div class="table-container">
-        <table>
-          <thead>
-            <tr>
-              <th>Status</th>
-              <th>Item Name</th>
-              <th>Category</th>
-              <th>Location</th>
-              <th>Date</th>
-              <th>Contact</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody id="items-table-body">
-            <tr>
-              <td colspan="7" class="empty-state">Loading items from database...</td>
-            </tr>
-          </tbody>
-        </table>
+      <!-- item cards (filled by script.js) -->
+      <div id="items-grid" class="items-grid">
+        <p class="empty-state">🌱 Loading items...</p>
       </div>
-    </section>
+    </main>
+  </div>
+
+  <footer>Made with 💚 by Team MONGOse · Node.js · Express · MongoDB</footer>
+
+  <!-- floating message (success / error / warning) -->
+  <div id="notification" role="alert" aria-live="polite"></div>
+
+  <!-- possible matches popup (filled by script.js) -->
+  <div id="matches-overlay" hidden>
+    <div id="matches-box" role="dialog" aria-modal="true" aria-labelledby="matches-heading"></div>
   </div>
 
   <script src="script.js"></script>

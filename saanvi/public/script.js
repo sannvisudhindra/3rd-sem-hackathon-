@@ -1,303 +1,348 @@
-/**
- * Campus Lost & Found System - Client Script
- * 
- * Handles:
- * - Dynamic CRUD interactions using fetch()
- * - Add and Edit mode switching
- * - Live search with 300ms debouncing & status dropdown filtering
- * - Inline alerts and notifications
- * - Safe HTML escaping to prevent XSS
- */
+// script.js - everything the page does: form, list, filters, buttons, matches popup
+// Talks to our API: /api/items (GET, POST), /api/items/:id (PUT, DELETE),
+// /api/items/:id/resolve (PATCH), /api/items/:id/matches (GET)
 
-const API_BASE = '/items';
+// ---------- page elements ----------
+const form = document.getElementById("item-form");
+const formCard = form.closest(".card");
+const formHeading = document.getElementById("form-heading");
+const submitBtn = document.getElementById("submit-btn");
+const cancelEditBtn = document.getElementById("cancel-edit-btn");
+const notification = document.getElementById("notification");
+const itemsGrid = document.getElementById("items-grid");
+const itemCount = document.getElementById("item-count");
 
-// DOM Elements
-const itemForm = document.getElementById('item-form');
-const titleInput = document.getElementById('item-title');
-const categoryInput = document.getElementById('item-category');
-const statusInput = document.getElementById('item-status');
-const locationInput = document.getElementById('item-location');
-const dateInput = document.getElementById('item-date');
-const contactInput = document.getElementById('item-contact');
-const descInput = document.getElementById('item-description');
+const searchInput = document.getElementById("search-input");
+const filterStatus = document.getElementById("filter-status");
+const filterLocation = document.getElementById("filter-location");
+const filterCategory = document.getElementById("filter-category");
+const showResolved = document.getElementById("show-resolved");
+const clearBtn = document.getElementById("clear-search-btn");
 
-const submitBtn = document.getElementById('submit-btn');
-const cancelEditBtn = document.getElementById('cancel-edit-btn');
-const formHeading = document.getElementById('form-heading');
+const matchesOverlay = document.getElementById("matches-overlay");
+const matchesBox = document.getElementById("matches-box");
 
-const searchInput = document.getElementById('search-input');
-const filterStatus = document.getElementById('filter-status');
-const clearSearchBtn = document.getElementById('clear-search-btn');
+let editingId = null; // id of the item being edited, or null when adding a new one
+let currentItems = []; // items shown on the page right now
 
-const tableBody = document.getElementById('items-table-body');
-const itemCountBadge = document.getElementById('item-count');
-const notification = document.getElementById('notification');
+// ---------- small helpers ----------
 
-// State tracking
-let editingItemId = null;
-let notificationTimeout = null;
-let searchDebounceTimeout = null;
-
-// ============================================================================
-// 1. Utilities (XSS Escaping & Notifications)
-// ============================================================================
-function escapeHtml(str) {
-  if (typeof str !== 'string') return String(str ?? '');
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
+// make text safe to put inside innerHTML (stops <script> tricks)
+function escapeHtml(text) {
+  const div = document.createElement("div");
+  div.textContent = text == null ? "" : text;
+  return div.innerHTML;
 }
 
-function showNotification(message, type = 'success') {
-  clearTimeout(notificationTimeout);
+// show a message above the form; kind = "success", "error" or "warning"
+function notify(message, kind = "success") {
   notification.textContent = message;
-  notification.className = type; // 'success', 'error', 'warning'
-
-  notificationTimeout = setTimeout(() => {
-    notification.className = '';
-    notification.textContent = '';
-  }, 4000);
+  notification.className = kind;
+  clearTimeout(notify.timer);
+  notify.timer = setTimeout(() => (notification.className = ""), 4000);
 }
 
-// Reset form back to "Report" mode
-function resetFormToCreateMode() {
-  editingItemId = null;
-  itemForm.reset();
-  dateInput.value = new Date().toISOString().split('T')[0];
-  submitBtn.textContent = 'Report Item';
-  submitBtn.className = 'btn btn-primary';
-  formHeading.textContent = 'Report Lost or Found Item';
-  cancelEditBtn.style.display = 'none';
+// today's date as YYYY-MM-DD
+function today() {
+  return new Date().toISOString().slice(0, 10);
 }
 
-// ============================================================================
-// 2. Fetch & Render Items
-// ============================================================================
+// "2026-10-25" -> "Today", "Yesterday" or "3 days ago"
+function daysAgo(dateText) {
+  const days = Math.round((new Date(today()) - new Date(dateText)) / 86400000);
+  if (days <= 0) return "Today";
+  if (days === 1) return "Yesterday";
+  return days + " days ago";
+}
+
+// a picture for each category
+const CATEGORY_ICONS = {
+  Electronics: "💻",
+  Stationery: "✏️",
+  "ID Card / Documents": "🪪",
+  "Wallet / Bag": "🎒",
+  Keys: "🔑",
+  Clothing: "👕",
+  Other: "📦",
+};
+
+// fetch that always gives back { ok, data } and never throws
+async function api(url, options = {}) {
+  try {
+    const res = await fetch(url, options);
+    const data = await res.json();
+    return { ok: res.ok, data };
+  } catch (err) {
+    return { ok: false, data: { error: "Could not reach the server. Is node server.js running?" } };
+  }
+}
+
+// ---------- stats ----------
+async function loadStats() {
+  const { ok, data } = await api("/api/items?showResolved=true");
+  if (!ok) return;
+  document.getElementById("stat-lost").textContent = data.filter((i) => i.type === "lost" && !i.resolved).length;
+  document.getElementById("stat-found").textContent = data.filter((i) => i.type === "found" && !i.resolved).length;
+  document.getElementById("stat-resolved").textContent = data.filter((i) => i.resolved).length;
+}
+
+// ---------- list ----------
 async function loadItems() {
-  const searchQuery = searchInput.value.trim();
-  const status = filterStatus.value.trim();
+  const params = new URLSearchParams();
+  if (filterStatus.value) params.set("type", filterStatus.value);
+  if (filterLocation.value) params.set("location", filterLocation.value);
+  if (filterCategory.value) params.set("category", filterCategory.value);
+  if (searchInput.value.trim()) params.set("q", searchInput.value.trim());
+  if (showResolved.checked) params.set("showResolved", "true");
 
-  try {
-    const params = new URLSearchParams();
-    if (searchQuery) params.append('search', searchQuery);
-    if (status) params.append('status', status);
-
-    const queryString = params.toString() ? `?${params.toString()}` : '';
-    const response = await fetch(`${API_BASE}${queryString}`);
-
-    if (!response.ok) {
-      throw new Error(`Server returned HTTP ${response.status}`);
-    }
-
-    const items = await response.json();
-    renderItemsTable(items);
-  } catch (error) {
-    console.error('Failed to load items:', error);
-    showNotification('Could not load items. Ensure MongoDB and Node server are running.', 'error');
-    tableBody.innerHTML = `
-      <tr>
-        <td colspan="7" class="empty-state" style="color: var(--error);">
-          ⚠️ Failed to connect to server/database.
-        </td>
-      </tr>
-    `;
-  }
-}
-
-function renderItemsTable(items) {
-  itemCountBadge.textContent = items.length;
-
-  if (items.length === 0) {
-    tableBody.innerHTML = `
-      <tr>
-        <td colspan="7" class="empty-state">No matching items found.</td>
-      </tr>
-    `;
+  const { ok, data } = await api("/api/items?" + params.toString());
+  if (!ok) {
+    itemsGrid.innerHTML = `<p class="empty-state"><span class="empty-icon">🔌</span>${escapeHtml(data.error)}</p>`;
     return;
   }
 
-  tableBody.innerHTML = items.map(item => {
-    const statusClass = item.status === 'Lost' ? 'badge-lost' : 'badge-found';
-    const descriptionHtml = item.description 
-      ? `<div class="item-desc-text">${escapeHtml(item.description)}</div>` 
-      : '';
-
-    return `
-      <tr data-id="${item._id}">
-        <td><span class="badge ${statusClass}">${escapeHtml(item.status)}</span></td>
-        <td>
-          <strong>${escapeHtml(item.title)}</strong>
-          ${descriptionHtml}
-        </td>
-        <td>${escapeHtml(item.category)}</td>
-        <td>📍 ${escapeHtml(item.location)}</td>
-        <td>${escapeHtml(item.date || '-')}</td>
-        <td>${escapeHtml(item.contact)}</td>
-        <td>
-          <button class="btn btn-sm btn-edit" onclick="handleEditClick('${item._id}')">Edit</button>
-          <button class="btn btn-sm btn-delete" onclick="handleDeleteClick('${item._id}')">Delete</button>
-        </td>
-      </tr>
-    `;
-  }).join('');
+  currentItems = data;
+  itemCount.textContent = data.length;
+  renderCards(data);
+  loadStats();
 }
 
-// ============================================================================
-// 3. Form Submit (Create or Update)
-// ============================================================================
-itemForm.addEventListener('submit', async (e) => {
-  e.preventDefault();
-
-  const title = titleInput.value.trim();
-  const category = categoryInput.value.trim();
-  const status = statusInput.value.trim();
-  const location = locationInput.value.trim();
-  const date = dateInput.value.trim();
-  const contact = contactInput.value.trim();
-  const description = descInput.value.trim();
-
-  // Basic validation check
-  if (!title || !category || !status || !location || !contact) {
-    showNotification('Please fill in all required fields marked with *', 'warning');
+function renderCards(list) {
+  if (list.length === 0) {
+    itemsGrid.innerHTML = `
+      <p class="empty-state">
+        <span class="empty-icon">🍃</span>
+        Nothing here yet. Try other filters, or report the first item!
+      </p>`;
     return;
   }
 
-  const payload = { title, category, status, location, date, contact, description };
+  let html = "";
+  for (const it of list) {
+    const icon = CATEGORY_ICONS[it.category] || "📦";
+    html += `
+      <article class="item-card ${it.type} ${it.resolved ? "resolved" : ""}">
+        <div class="item-top">
+          <div class="item-icon" aria-hidden="true">${icon}</div>
+          <div>
+            <span class="tag tag-${it.type}">${it.type === "lost" ? "😟 Lost" : "🙌 Found"}</span>
+            ${it.resolved ? '<span class="tag tag-resolved">🎉 Reunited</span>' : ""}
+          </div>
+        </div>
 
-  try {
-    let response;
-    if (editingItemId) {
-      // PUT update
-      response = await fetch(`${API_BASE}/${editingItemId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-    } else {
-      // POST create
-      response = await fetch(API_BASE, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
+        <h3>${escapeHtml(it.item)}</h3>
+        ${it.description ? `<p class="item-desc">${escapeHtml(it.description)}</p>` : ""}
+
+        <ul class="item-meta">
+          <li>🗂️ ${escapeHtml(it.category || "Other")}</li>
+          <li>📍 ${escapeHtml(it.location)}</li>
+          <li>📅 ${escapeHtml(it.date)} <span class="when">· ${daysAgo(it.date)}</span></li>
+          <li>📞 ${escapeHtml(it.contact)}</li>
+        </ul>
+
+        <div class="item-actions">
+          <button class="chip-btn chip-match" data-action="matches" data-id="${it._id}">🔗 Matches</button>
+          ${it.resolved ? "" : `<button class="chip-btn chip-resolve" data-action="resolve" data-id="${it._id}">✅ Resolve</button>`}
+          <button class="chip-btn chip-edit" data-action="edit" data-id="${it._id}">✏️ Edit</button>
+          <button class="chip-btn chip-delete" data-action="delete" data-id="${it._id}">🗑️ Delete</button>
+        </div>
+      </article>`;
+  }
+  itemsGrid.innerHTML = html;
+}
+
+// ---------- form: add (POST) and edit (PUT) ----------
+function readForm() {
+  return {
+    type: form.elements.status.value,
+    item: form.elements.title.value,
+    category: form.elements.category.value,
+    location: form.elements.location.value,
+    date: form.elements.date.value,
+    contact: form.elements.contact.value,
+    description: form.elements.description.value,
+  };
+}
+
+// quick check in the browser (the server checks again - it is the real guard)
+function checkForm() {
+  let ok = true;
+  for (const name of ["title", "location", "date", "contact"]) {
+    const input = form.elements[name];
+    const empty = input.value.trim() === "";
+    input.classList.toggle("invalid", empty);
+    if (empty) ok = false;
+  }
+  if (!ok) notify("✋ Please fill in the fields marked with *", "warning");
+  return ok;
+}
+
+form.addEventListener("submit", async (event) => {
+  event.preventDefault(); // stop the page from reloading
+  if (!checkForm()) return;
+
+  submitBtn.disabled = true;
+  submitBtn.textContent = editingId ? "⏳ Saving..." : "⏳ Reporting...";
+
+  const url = editingId ? "/api/items/" + editingId : "/api/items";
+  const { ok, data } = await api(url, {
+    method: editingId ? "PUT" : "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(readForm()),
+  });
+
+  if (ok) {
+    notify(editingId ? "✏️ Item updated!" : "📮 Item reported!");
+    const newId = data._id;
+    const wasNew = !editingId;
+    stopEdit();
+    await loadItems();
+    // straight after reporting, tell the user if we already see a match
+    if (wasNew) {
+      const matches = await api("/api/items/" + newId + "/matches");
+      if (matches.ok && matches.data.length > 0) {
+        notify(`📮 Reported! We spotted ${matches.data.length} possible match(es) - tap "🔗 Matches" on your item.`, "warning");
+      }
     }
+  } else {
+    notify(data.error, "error");
+  }
 
-    const data = await response.json();
+  submitBtn.disabled = false;
+  submitBtn.textContent = editingId ? "💾 Save changes" : "📮 Report item";
+});
 
-    if (!response.ok) {
-      showNotification(data.error || 'Operation failed', 'error');
-      return;
-    }
+function startEdit(item) {
+  editingId = item._id;
+  form.elements.status.value = item.type;
+  form.elements.title.value = item.item;
+  form.elements.category.value = item.category || "Other";
+  form.elements.location.value = item.location;
+  form.elements.date.value = item.date;
+  form.elements.contact.value = item.contact;
+  form.elements.description.value = item.description || "";
 
-    if (editingItemId) {
-      showNotification(`Item "${data.title}" updated successfully!`, 'success');
-    } else {
-      showNotification(`Report for "${data.title}" created successfully!`, 'success');
-    }
+  formHeading.textContent = "✏️ Editing: " + item.item;
+  submitBtn.textContent = "💾 Save changes";
+  cancelEditBtn.hidden = false;
+  formCard.classList.add("editing");
+  formCard.scrollIntoView({ behavior: "smooth" });
+}
 
-    resetFormToCreateMode();
+function stopEdit() {
+  editingId = null;
+  form.reset();
+  form.elements.date.value = today();
+  form.querySelectorAll(".invalid").forEach((el) => el.classList.remove("invalid"));
+  formHeading.textContent = "📮 Report an item";
+  submitBtn.textContent = "📮 Report item";
+  cancelEditBtn.hidden = true;
+  formCard.classList.remove("editing");
+}
+
+cancelEditBtn.addEventListener("click", stopEdit);
+
+// ---------- card buttons (one listener for all cards) ----------
+itemsGrid.addEventListener("click", async (event) => {
+  const button = event.target.closest("button");
+  if (!button) return;
+  const id = button.dataset.id;
+  const action = button.dataset.action;
+
+  if (action === "matches") {
+    showMatches(id);
+  }
+
+  if (action === "edit") {
+    startEdit(currentItems.find((i) => i._id === id));
+  }
+
+  if (action === "resolve") {
+    if (!confirm("Has this item been returned to its owner? 🎉")) return;
+    const { ok, data } = await api("/api/items/" + id + "/resolve", { method: "PATCH" });
+    notify(ok ? "🎉 Yay! Marked as reunited" : data.error, ok ? "success" : "error");
     loadItems();
-  } catch (error) {
-    console.error('Submit error:', error);
-    showNotification('Network error while saving item.', 'error');
+  }
+
+  if (action === "delete") {
+    if (!confirm("Delete this item permanently?")) return;
+    const { ok, data } = await api("/api/items/" + id, { method: "DELETE" });
+    notify(ok ? "🗑️ Item deleted" : data.error, ok ? "success" : "error");
+    if (ok && editingId === id) stopEdit();
+    loadItems();
   }
 });
 
-// ============================================================================
-// 4. Edit Item
-// ============================================================================
-window.handleEditClick = async function(id) {
-  try {
-    const response = await fetch(`${API_BASE}/${id}`);
-    if (!response.ok) {
-      showNotification('Failed to fetch item for editing', 'error');
-      return;
-    }
-
-    const item = await response.json();
-
-    // Populate inputs
-    editingItemId = item._id;
-    titleInput.value = item.title || '';
-    categoryInput.value = item.category || 'Other';
-    statusInput.value = item.status || 'Lost';
-    locationInput.value = item.location || '';
-    dateInput.value = item.date || '';
-    contactInput.value = item.contact || '';
-    descInput.value = item.description || '';
-
-    // Switch UI to edit mode
-    formHeading.textContent = `Edit Item: ${item.title}`;
-    submitBtn.textContent = 'Save Changes';
-    cancelEditBtn.style.display = 'inline-flex';
-
-    // Scroll smoothly to form
-    itemForm.scrollIntoView({ behavior: 'smooth' });
-  } catch (error) {
-    console.error('Edit fetch error:', error);
-    showNotification('Could not retrieve item details.', 'error');
+// ---------- matches popup ----------
+async function showMatches(id) {
+  const item = currentItems.find((i) => i._id === id);
+  const { ok, data } = await api("/api/items/" + id + "/matches");
+  if (!ok) {
+    notify(data.error, "error");
+    return;
   }
-};
 
-cancelEditBtn.addEventListener('click', () => {
-  resetFormToCreateMode();
-});
+  const other = item.type === "lost" ? "found" : "lost";
+  let html = `
+    <h3 id="matches-heading">🔗 Possible matches for "${escapeHtml(item.item)}"</h3>
+    <p class="subtitle">${other} items at ${escapeHtml(item.location)} with a similar name</p>`;
 
-// ============================================================================
-// 5. Delete Item
-// ============================================================================
-window.handleDeleteClick = async function(id) {
-  const confirmed = confirm('Are you sure you want to delete this reported item?');
-  if (!confirmed) return;
-
-  try {
-    const response = await fetch(`${API_BASE}/${id}`, {
-      method: 'DELETE'
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      showNotification(data.error || 'Failed to delete item', 'error');
-      return;
+  if (data.length === 0) {
+    html += '<p class="empty-state"><span class="empty-icon">🔍</span>No matches yet. Check again later!</p>';
+  } else {
+    for (const m of data) {
+      html += `
+        <div class="match">
+          <span class="tag tag-${m.type}">${m.type === "lost" ? "😟 Lost" : "🙌 Found"}</span>
+          <b>${escapeHtml(m.item)}</b>
+          <p>📍 ${escapeHtml(m.location)} · 📅 ${escapeHtml(m.date)} · 📞 ${escapeHtml(m.contact)}</p>
+          ${m.description ? `<p>${escapeHtml(m.description)}</p>` : ""}
+        </div>`;
     }
-
-    showNotification('Item record deleted successfully.', 'success');
-    loadItems();
-  } catch (error) {
-    console.error('Delete error:', error);
-    showNotification('Error deleting item record.', 'error');
   }
-};
+  html += '<button class="btn btn-primary" id="close-matches">👍 Got it</button>';
 
-// ============================================================================
-// 6. Search & Filter Handlers (Live 300ms Debounce)
-// ============================================================================
-searchInput.addEventListener('input', () => {
-  clearTimeout(searchDebounceTimeout);
-  searchDebounceTimeout = setTimeout(() => {
-    loadItems();
-  }, 300);
+  matchesBox.innerHTML = html;
+  matchesOverlay.hidden = false;
+  document.getElementById("close-matches").focus();
+}
+
+function closeMatches() {
+  matchesOverlay.hidden = true;
+}
+
+matchesOverlay.addEventListener("click", (event) => {
+  // close when clicking the dark background or the Close button
+  if (event.target === matchesOverlay || event.target.id === "close-matches") closeMatches();
 });
 
-filterStatus.addEventListener('change', () => {
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") closeMatches();
+});
+
+// ---------- search & filters ----------
+let searchTimer;
+searchInput.addEventListener("input", () => {
+  // wait 300 ms after typing stops, so we don't call the server on every key
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(loadItems, 300);
+});
+
+filterStatus.addEventListener("change", loadItems);
+filterLocation.addEventListener("change", loadItems);
+filterCategory.addEventListener("change", loadItems);
+showResolved.addEventListener("change", loadItems);
+
+clearBtn.addEventListener("click", () => {
+  searchInput.value = "";
+  filterStatus.value = "";
+  filterLocation.value = "";
+  filterCategory.value = "";
+  showResolved.checked = false;
   loadItems();
 });
 
-clearSearchBtn.addEventListener('click', () => {
-  searchInput.value = '';
-  filterStatus.value = '';
-  loadItems();
-});
-
-// ============================================================================
-// 7. Initial Load
-// ============================================================================
-document.addEventListener('DOMContentLoaded', () => {
-  // Set default date to today
-  dateInput.value = new Date().toISOString().split('T')[0];
-  loadItems();
-});
+// ---------- start ----------
+form.elements.date.value = today();
+form.elements.date.max = today(); // can't pick a future date
+loadItems();
