@@ -1,12 +1,12 @@
 /**
- * Campus Lost & Found System - Client Script
+ * CampusTrack Lost & Found - Client Script
  * 
  * Features:
  * - Dynamic CRUD interactions using fetch()
- * - One-click "Mark as Resolved" and "Reopen" status toggling
- * - Quick stats badges and 1-click status tab filtering
- * - Debounced search (300ms) with keyword highlight
- * - Smooth form add/edit state switching with XSS escaping
+ * - Real-time statistics counters and multi-tier filter pills
+ * - One-click "Mark as Resolved" and "Reopen" toggles
+ * - Debounced search (300ms) with keyword matching
+ * - Smooth form collapse/expand with XSS escaping
  */
 
 const API_BASE = '/items';
@@ -34,7 +34,7 @@ const itemCountBadge = document.getElementById('item-count');
 const activeFilterLabel = document.getElementById('active-filter-label');
 const notification = document.getElementById('notification');
 
-// Stats Elements
+// Metric Count Elements
 const countAllEl = document.getElementById('count-all');
 const countLostEl = document.getElementById('count-lost');
 const countFoundEl = document.getElementById('count-found');
@@ -70,30 +70,50 @@ function showNotification(message, type = 'success') {
   }, 4000);
 }
 
+function toggleFormVisibility() {
+  if (formSection.style.display === 'none' || getComputedStyle(formSection).display === 'none') {
+    formSection.style.display = 'block';
+  }
+  formSection.scrollIntoView({ behavior: 'smooth' });
+  titleInput.focus();
+}
+
+function hideForm() {
+  if (!editingItemId) {
+    formSection.style.display = 'none';
+  } else {
+    resetFormToCreateMode();
+  }
+}
+
 // Reset form back to "Report" mode
 function resetFormToCreateMode() {
   editingItemId = null;
   itemForm.reset();
   dateInput.value = new Date().toISOString().split('T')[0];
-  submitBtn.textContent = 'Submit Report';
+  submitBtn.querySelector('span').textContent = 'Submit Report';
   submitBtn.className = 'btn btn-primary';
-  formHeading.textContent = 'Report Lost or Found Item';
+  formHeading.textContent = 'Report a Lost or Found Item';
   cancelEditBtn.style.display = 'none';
 }
 
-function toggleFormVisibility() {
-  formSection.scrollIntoView({ behavior: 'smooth' });
-  titleInput.focus();
-}
-
 // ============================================================================
-// 2. Filter Tabs & Quick Stats
+// 2. Filter Tabs & Quick Stats Synchronization
 // ============================================================================
 window.setFilterStatus = function(status) {
   currentFilterStatus = status;
 
-  // Update active pill styling
-  document.querySelectorAll('.stat-pill').forEach(pill => {
+  // Sync Metric Cards active state
+  document.querySelectorAll('.metric-card').forEach(card => {
+    if (card.dataset.status === status) {
+      card.classList.add('active');
+    } else {
+      card.classList.remove('active');
+    }
+  });
+
+  // Sync Filter Pills active state
+  document.querySelectorAll('.filter-pill').forEach(pill => {
     if (pill.dataset.status === status) {
       pill.classList.add('active');
     } else {
@@ -136,6 +156,19 @@ async function updateOverallCounts() {
   }
 }
 
+// Category Emoji helper
+function getCategoryEmoji(category) {
+  if (!category) return '📦';
+  const cat = category.toLowerCase();
+  if (cat.includes('elect')) return '📱';
+  if (cat.includes('station') || cat.includes('book')) return '📚';
+  if (cat.includes('id') || cat.includes('doc')) return '🪪';
+  if (cat.includes('wallet') || cat.includes('bag')) return '🎒';
+  if (cat.includes('key')) return '🔑';
+  if (cat.includes('cloth') || cat.includes('watch') || cat.includes('bottle')) return '👕';
+  return '📦';
+}
+
 // ============================================================================
 // 3. Fetch & Render Items
 // ============================================================================
@@ -162,8 +195,12 @@ async function loadItems() {
     showNotification('Could not load items. Ensure MongoDB and Node server are running.', 'error');
     tableBody.innerHTML = `
       <tr>
-        <td colspan="7" class="empty-state" style="color: var(--error);">
-          ⚠️ Failed to connect to server/database.
+        <td colspan="7" class="empty-state">
+          <div class="empty-state-content">
+            <span style="font-size: 2rem;">⚠️</span>
+            <p style="color: var(--lost-color); font-weight: 600;">Failed to connect to database/server.</p>
+            <p style="font-size: 0.85rem;">Make sure MongoDB Compass and 'node server.js' are running.</p>
+          </div>
         </td>
       </tr>
     `;
@@ -176,7 +213,13 @@ function renderItemsTable(items) {
   if (items.length === 0) {
     tableBody.innerHTML = `
       <tr>
-        <td colspan="7" class="empty-state">No matching items found.</td>
+        <td colspan="7" class="empty-state">
+          <div class="empty-state-content">
+            <span style="font-size: 2.2rem;">🔍</span>
+            <p style="font-weight: 600; color: var(--text-main);">No matching items found</p>
+            <p style="font-size: 0.85rem;">Try modifying your search query or status filter.</p>
+          </div>
+        </td>
       </tr>
     `;
     return;
@@ -197,29 +240,35 @@ function renderItemsTable(items) {
     }
 
     const descriptionHtml = item.description 
-      ? `<div class="item-desc-text">${escapeHtml(item.description)}</div>` 
+      ? `<div class="item-desc">${escapeHtml(item.description)}</div>` 
       : '';
 
     // "Mark as Resolved" vs "Reopen" action button
     const resolveBtnHtml = isResolved
-      ? `<button class="btn-sm btn-reopen" onclick="handleToggleResolve('${item._id}', 'Lost')" title="Reopen as Active Lost item">↩ Reopen</button>`
-      : `<button class="btn-sm btn-resolve" onclick="handleToggleResolve('${item._id}', 'Resolved')" title="Mark as resolved / returned">✓ Resolve</button>`;
+      ? `<button class="btn-sm btn-reopen" onclick="handleToggleResolve('${item._id}', 'Lost')" title="Reopen this record">↩ Reopen</button>`
+      : `<button class="btn-sm btn-resolve" onclick="handleToggleResolve('${item._id}', 'Resolved')" title="Mark item as resolved/returned">✓ Resolve</button>`;
 
     return `
       <tr data-id="${item._id}" class="${isResolved ? 'row-resolved' : ''}">
-        <td><span class="badge ${badgeClass}">${badgeIcon} ${escapeHtml(item.status)}</span></td>
         <td>
-          <strong class="item-title-text">${escapeHtml(item.title)}</strong>
+          <span class="badge ${badgeClass}">${badgeIcon} ${escapeHtml(item.status)}</span>
+        </td>
+        <td>
+          <span class="item-title">${escapeHtml(item.title)}</span>
           ${descriptionHtml}
         </td>
-        <td>${escapeHtml(item.category)}</td>
+        <td>
+          <span class="category-pill">${getCategoryEmoji(item.category)} ${escapeHtml(item.category)}</span>
+        </td>
         <td>📍 ${escapeHtml(item.location)}</td>
         <td>${escapeHtml(item.date || '-')}</td>
-        <td>${escapeHtml(item.contact)}</td>
-        <td style="text-align: center; white-space: nowrap;">
-          ${resolveBtnHtml}
-          <button class="btn-sm btn-edit" onclick="handleEditClick('${item._id}')" title="Edit details">Edit</button>
-          <button class="btn-sm btn-delete" onclick="handleDeleteClick('${item._id}')" title="Delete record">Delete</button>
+        <td>📞 ${escapeHtml(item.contact)}</td>
+        <td>
+          <div class="actions-cell">
+            ${resolveBtnHtml}
+            <button class="btn-sm btn-edit" onclick="handleEditClick('${item._id}')" title="Edit details">✏️ Edit</button>
+            <button class="btn-sm btn-delete" onclick="handleDeleteClick('${item._id}')" title="Delete record">🗑️</button>
+          </div>
         </td>
       </tr>
     `;
@@ -245,7 +294,7 @@ window.handleToggleResolve = async function(id, targetStatus) {
     }
 
     if (targetStatus === 'Resolved') {
-      showNotification(`Item "${data.title}" marked as Resolved! ✓`, 'success');
+      showNotification(`🎉 Item "${data.title}" marked as Resolved!`, 'success');
     } else {
       showNotification(`Item "${data.title}" reopened as Active!`, 'warning');
     }
@@ -331,6 +380,9 @@ window.handleEditClick = async function(id) {
 
     const item = await response.json();
 
+    // Ensure form is visible
+    formSection.style.display = 'block';
+
     // Populate inputs
     editingItemId = item._id;
     titleInput.value = item.title || '';
@@ -342,8 +394,8 @@ window.handleEditClick = async function(id) {
     descInput.value = item.description || '';
 
     // Switch UI to edit mode
-    formHeading.textContent = `Edit Item: ${item.title}`;
-    submitBtn.textContent = 'Save Changes';
+    formHeading.textContent = `Edit Details: ${item.title}`;
+    submitBtn.querySelector('span').textContent = 'Save Changes';
     cancelEditBtn.style.display = 'inline-flex';
 
     // Scroll smoothly to form
@@ -359,7 +411,7 @@ window.handleEditClick = async function(id) {
 // 7. Delete Item
 // ============================================================================
 window.handleDeleteClick = async function(id) {
-  const confirmed = confirm('Are you sure you want to delete this reported item?');
+  const confirmed = confirm('Are you sure you want to permanently delete this record?');
   if (!confirmed) return;
 
   try {

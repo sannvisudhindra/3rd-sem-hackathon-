@@ -3,154 +3,204 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Campus Lost & Found System</title>
+  <title>Campus Lost & Found • Student Portal</title>
+  <!-- Google Fonts: Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="container">
-    <!-- Header -->
-    <header class="app-header">
-      <div class="header-content">
-        <h1>🔍 Campus Lost &amp; Found</h1>
-        <p>Report lost belongings, claim found items, and track resolutions in real time.</p>
+  <!-- Top Navigation Bar -->
+  <nav class="navbar">
+    <div class="nav-container">
+      <div class="nav-brand">
+        <div class="brand-icon">🔍</div>
+        <div>
+          <span class="brand-title">CampusTrack</span>
+          <span class="brand-badge">Lost &amp; Found Hub</span>
+        </div>
       </div>
-      <button type="button" id="toggle-form-btn" class="btn btn-primary" onclick="toggleFormVisibility()">
-        + Report Item
-      </button>
-    </header>
+      <div class="nav-actions">
+        <button type="button" id="toggle-form-btn" class="btn btn-gradient" onclick="toggleFormVisibility()">
+          <span class="btn-icon">+</span> Report an Item
+        </button>
+      </div>
+    </div>
+  </nav>
 
-    <!-- Notification Toast / Alert -->
+  <main class="container">
+    <!-- Notification Toast -->
     <div id="notification" role="alert" aria-live="polite"></div>
 
-    <!-- Quick Stats & Filter Tabs -->
-    <div class="stats-bar">
-      <button type="button" class="stat-pill active" data-status="" onclick="setFilterStatus('')">
-        All Items <span id="count-all" class="pill-badge">0</span>
-      </button>
-      <button type="button" class="stat-pill" data-status="Lost" onclick="setFilterStatus('Lost')">
-        🔴 Lost <span id="count-lost" class="pill-badge">0</span>
-      </button>
-      <button type="button" class="stat-pill" data-status="Found" onclick="setFilterStatus('Found')">
-        🟢 Found <span id="count-found" class="pill-badge">0</span>
-      </button>
-      <button type="button" class="stat-pill" data-status="Resolved" onclick="setFilterStatus('Resolved')">
-        ✅ Resolved <span id="count-resolved" class="pill-badge">0</span>
-      </button>
-    </div>
+    <!-- Hero / Metric Cards -->
+    <section class="metrics-grid" aria-label="Key Statistics">
+      <div class="metric-card active" data-status="" onclick="setFilterStatus('')">
+        <div class="metric-icon icon-all">📦</div>
+        <div class="metric-info">
+          <span class="metric-value" id="count-all">0</span>
+          <span class="metric-label">All Reports</span>
+        </div>
+      </div>
 
-    <!-- Section 1: Add / Edit Item Form (Collapsible/Clean) -->
+      <div class="metric-card" data-status="Lost" onclick="setFilterStatus('Lost')">
+        <div class="metric-icon icon-lost">🔴</div>
+        <div class="metric-info">
+          <span class="metric-value" id="count-lost">0</span>
+          <span class="metric-label">Active Lost</span>
+        </div>
+      </div>
+
+      <div class="metric-card" data-status="Found" onclick="setFilterStatus('Found')">
+        <div class="metric-icon icon-found">🟢</div>
+        <div class="metric-info">
+          <span class="metric-value" id="count-found">0</span>
+          <span class="metric-label">Found Belongings</span>
+        </div>
+      </div>
+
+      <div class="metric-card" data-status="Resolved" onclick="setFilterStatus('Resolved')">
+        <div class="metric-icon icon-resolved">✅</div>
+        <div class="metric-info">
+          <span class="metric-value" id="count-resolved">0</span>
+          <span class="metric-label">Resolved / Reunited</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Report / Edit Item Form Section -->
     <section id="form-section" class="card form-card" aria-labelledby="form-heading">
-      <div class="card-header">
-        <h2 id="form-heading">Report Lost or Found Item</h2>
-        <span class="card-subtitle">Fill in the item details below</span>
+      <div class="form-header">
+        <div>
+          <h2 id="form-heading">Report a Lost or Found Item</h2>
+          <p class="form-subtitle">Provide accurate details to help reunite owners with their belongings.</p>
+        </div>
+        <button type="button" class="btn-close-form" onclick="hideForm()" title="Collapse form">✕</button>
       </div>
 
       <form id="item-form" novalidate>
         <div class="form-grid">
           <div class="form-group">
-            <label for="item-title">Item Name / Title *</label>
-            <input type="text" id="item-title" name="title" placeholder="e.g. Casio Scientific Calculator" required>
+            <label for="item-title">Item Name / Title <span class="req">*</span></label>
+            <input type="text" id="item-title" name="title" placeholder="e.g. Casio fx-991EX Calculator" required>
           </div>
 
           <div class="form-group">
-            <label for="item-category">Category *</label>
+            <label for="item-category">Category <span class="req">*</span></label>
             <select id="item-category" name="category" required>
-              <option value="Electronics">Electronics (Laptop, Phone, Charger)</option>
-              <option value="Stationery">Stationery (Calculator, Book, Pen)</option>
-              <option value="ID Card / Documents">ID Card / College Pass / Documents</option>
-              <option value="Wallet / Bag">Wallet / Backpack / Purse</option>
-              <option value="Keys">Keys (Room, Bike, Car)</option>
-              <option value="Clothing">Clothing / Water Bottle / Accessories</option>
-              <option value="Other">Other</option>
+              <option value="Electronics">📱 Electronics (Laptop, Phone, Charger, AirPods)</option>
+              <option value="Stationery">📚 Stationery (Calculator, Notebook, Book)</option>
+              <option value="ID Card / Documents">🪪 ID Card / College Pass / Documents</option>
+              <option value="Wallet / Bag">🎒 Wallet / Backpack / Purse</option>
+              <option value="Keys">🔑 Keys (Room, Bike, Car)</option>
+              <option value="Clothing">👕 Clothing / Water Bottle / Watch</option>
+              <option value="Other">📦 Other Items</option>
             </select>
           </div>
 
           <div class="form-group">
-            <label for="item-status">Status *</label>
+            <label for="item-status">Status <span class="req">*</span></label>
             <select id="item-status" name="status" required>
-              <option value="Lost">Lost (Looking for it)</option>
-              <option value="Found">Found (Someone handed it over)</option>
-              <option value="Resolved">Resolved (Returned to owner)</option>
+              <option value="Lost">🔴 Lost (I am looking for it)</option>
+              <option value="Found">🟢 Found (I found it and have it)</option>
+              <option value="Resolved">✅ Resolved (Already returned to owner)</option>
             </select>
           </div>
 
           <div class="form-group">
-            <label for="item-location">Location *</label>
-            <input type="text" id="item-location" name="location" placeholder="e.g. Central Library 2nd Floor" required>
+            <label for="item-location">Location <span class="req">*</span></label>
+            <input type="text" id="item-location" name="location" placeholder="e.g. Central Library 2nd Floor, Canteen Table 4" required>
           </div>
 
           <div class="form-group">
-            <label for="item-date">Date *</label>
+            <label for="item-date">Date <span class="req">*</span></label>
             <input type="date" id="item-date" name="date" required>
           </div>
 
           <div class="form-group">
-            <label for="item-contact">Contact Info (Phone / Email) *</label>
-            <input type="text" id="item-contact" name="contact" placeholder="e.g. 9876543210 or name@college.edu" required>
+            <label for="item-contact">Contact Info (Phone / Email) <span class="req">*</span></label>
+            <input type="text" id="item-contact" name="contact" placeholder="e.g. 9876543210 or saanvi@rvce.edu.in" required>
           </div>
 
           <div class="form-group full-width">
-            <label for="item-description">Description / Identifying Marks (Optional)</label>
-            <input type="text" id="item-description" name="description" placeholder="e.g. Blue sticker on the back, black zipped case">
+            <label for="item-description">Description &amp; Identifying Marks (Optional)</label>
+            <input type="text" id="item-description" name="description" placeholder="e.g. Has a metallic sticker on back, black zippered pouch, blue keychain">
           </div>
         </div>
 
         <div class="form-actions">
-          <button type="submit" id="submit-btn" class="btn btn-primary">Submit Report</button>
-          <button type="button" id="cancel-edit-btn" class="btn btn-secondary" onclick="resetFormToCreateMode()">Cancel</button>
+          <button type="submit" id="submit-btn" class="btn btn-primary">
+            <span>Submit Report</span>
+          </button>
+          <button type="button" id="cancel-edit-btn" class="btn btn-secondary" onclick="resetFormToCreateMode()">
+            Cancel
+          </button>
         </div>
       </form>
     </section>
 
-    <!-- Section 2: Search & Filter Toolbar -->
-    <section class="card toolbar-card" aria-label="Search and Filter">
-      <div class="search-bar-container">
-        <div class="search-input-wrapper">
-          <span class="search-icon">🔎</span>
-          <input 
-            type="search" 
-            id="search-input" 
-            placeholder="Search by title, location, category, or keyword..."
-            autocomplete="off"
-          >
-        </div>
-        <button type="button" id="clear-search-btn" class="btn btn-secondary" title="Clear search">
-          Clear
-        </button>
+    <!-- Toolbar: Search & Quick Filters -->
+    <section class="toolbar-section" aria-label="Search and Filter">
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input 
+          type="search" 
+          id="search-input" 
+          placeholder="Search items by name, location, category, contact..."
+          autocomplete="off"
+        >
+        <button type="button" id="clear-search-btn" class="clear-btn" title="Clear search">✕</button>
+      </div>
+
+      <div class="filter-pills">
+        <button type="button" class="filter-pill active" data-status="" onclick="setFilterStatus('')">All</button>
+        <button type="button" class="filter-pill" data-status="Lost" onclick="setFilterStatus('Lost')">🔴 Lost</button>
+        <button type="button" class="filter-pill" data-status="Found" onclick="setFilterStatus('Found')">🟢 Found</button>
+        <button type="button" class="filter-pill" data-status="Resolved" onclick="setFilterStatus('Resolved')">✅ Resolved</button>
       </div>
     </section>
 
-    <!-- Section 3: Reported Items Directory -->
-    <section class="card table-card" aria-labelledby="list-heading">
-      <div class="table-header-row">
-        <h2 id="list-heading">
-          Directory <span id="item-count" class="badge-count">0 items</span>
-        </h2>
-        <span id="active-filter-label" class="filter-indicator">Showing all items</span>
+    <!-- Directory Section: Modern Cards & Table -->
+    <section class="card directory-card" aria-labelledby="directory-heading">
+      <div class="directory-header">
+        <div class="header-left">
+          <h2 id="directory-heading">Live Directory</h2>
+          <span id="item-count" class="count-pill">0 items</span>
+        </div>
+        <span id="active-filter-label" class="filter-status-text">Showing all items</span>
       </div>
 
-      <div class="table-container">
-        <table>
+      <div class="table-wrapper">
+        <table class="modern-table">
           <thead>
             <tr>
-              <th style="width: 110px;">Status</th>
-              <th>Item Name</th>
-              <th>Category</th>
-              <th>Location</th>
-              <th>Date</th>
-              <th>Contact</th>
-              <th style="width: 220px; text-align: center;">Actions</th>
+              <th style="width: 120px;">Status</th>
+              <th>Item Details</th>
+              <th style="width: 140px;">Category</th>
+              <th style="width: 160px;">Location</th>
+              <th style="width: 110px;">Date</th>
+              <th style="width: 140px;">Contact</th>
+              <th style="width: 220px; text-align: right;">Actions</th>
             </tr>
           </thead>
           <tbody id="items-table-body">
             <tr>
-              <td colspan="7" class="empty-state">Loading items from database...</td>
+              <td colspan="7" class="empty-state">
+                <div class="empty-state-content">
+                  <div class="spinner"></div>
+                  <p>Loading items from database...</p>
+                </div>
+              </td>
             </tr>
           </tbody>
         </table>
       </div>
     </section>
-  </div>
+  </main>
+
+  <footer class="app-footer">
+    <p>Campus Lost &amp; Found Portal • Full-Stack Node.js, Express &amp; MongoDB • Skill Lab 2026</p>
+  </footer>
 
   <script src="script.js"></script>
 </body>
